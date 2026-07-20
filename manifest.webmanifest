@@ -1,0 +1,15 @@
+{
+  "name": "דובי׳ס נגרות אישית",
+  "short_name": "דובי׳ס",
+  "description": "קטלוג עבודות נגרות פרטי",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./dubis-app-v3.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f7f2",
+  "theme_color": "#7650ad",
+  "icons": [
+    {"src":"./dubis-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
