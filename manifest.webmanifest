@@ -4,7 +4,7 @@
   "description": "קטלוג עבודות נגרות פרטי",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "./dubis-app-v3.html",
+  "start_url": "./dubis-app-v4.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7f7f2",
