@@ -39,7 +39,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, getDoc, getCountFromServer, setDoc, updateDoc, deleteDoc, doc, query, where, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
 const firebaseConfig={apiKey:'AIzaSyB-Qs4S_UaZ5MKyC_-iVcRQ5_CxHOD65dM',authDomain:'dubis-carpentry.firebaseapp.com',projectId:'dubis-carpentry',storageBucket:'dubis-carpentry.firebasestorage.app',messagingSenderId:'223449530915',appId:'1:223449530915:web:83f1999e2cbd94fede2796'};
 const firebaseApp=initializeApp(firebaseConfig),auth=getAuth(firebaseApp),cloud=getFirestore(firebaseApp);
@@ -71,7 +71,17 @@ async function loadCategories(){
  cats=[...unique.values()].map(({_canonical,...c})=>c).filter(c=>c.name).sort((a,b)=>(a.order||999)-(b.order||999));
  if(!cats.length)cats=[...defaultCats];
 }
-async function renderCategories(){categories.innerHTML='';for(const c of cats){const snap=await getDocs(query(collection(cloud,'photos'),where('category','==',c.id)));const photos=snap.docs.map(d=>d.data()).filter(p=>p.imageData);const n=photos.length,defaultPosition=defaultCats.find(x=>x.id===c.id)?.coverPosition;const b=document.createElement('button');b.className='card';if(photos[0]?.imageData){b.style.backgroundImage=`url("${photos[0].imageData}")`;b.style.backgroundSize='cover';b.style.backgroundPosition='center'}else if(Number.isInteger(defaultPosition)){b.style.backgroundImage='url("./category-covers.jpg")';b.style.backgroundSize='700% 100%';b.style.backgroundPosition=`${defaultPosition*100/6}% center`}else b.style.backgroundImage='linear-gradient(135deg,#7650ad,#62c4c0)';b.innerHTML=`<strong>${c.name}<span class="count">${n?n+' תמונות':'עדיין אין תמונות'}</span></strong>`;b.onclick=()=>openCategory(c);categories.appendChild(b)}}
+async function renderCategories(){
+ categories.innerHTML='';
+ const jobs=cats.map(c=>{
+  const defaultPosition=defaultCats.find(x=>x.id===c.id)?.coverPosition,b=document.createElement('button');
+  b.className='card';
+  if(Number.isInteger(defaultPosition)){b.style.backgroundImage='url("./category-covers.jpg")';b.style.backgroundSize='700% 100%';b.style.backgroundPosition=`${defaultPosition*100/6}% center`}else b.style.backgroundImage='linear-gradient(135deg,#7650ad,#62c4c0)';
+  b.innerHTML=`<strong>${c.name}<span class="count">טוען…</span></strong>`;b.onclick=()=>openCategory(c);categories.appendChild(b);
+  return (async()=>{try{const q=query(collection(cloud,'photos'),where('category','==',c.id)),[countSnap,coverSnap]=await Promise.all([getCountFromServer(q),getDocs(query(collection(cloud,'photos'),where('category','==',c.id),limit(1)))]),n=countSnap.data().count,cover=coverSnap.docs[0]?.data();b.querySelector('.count').textContent=n?n+' תמונות':'עדיין אין תמונות';if(cover?.imageData){b.style.backgroundImage=`url("${cover.imageData}")`;b.style.backgroundSize='cover';b.style.backgroundPosition='center'}}catch(e){b.querySelector('.count').textContent='לחץ לצפייה'}})();
+ });
+ await Promise.allSettled(jobs);
+}
 function openCategory(c){current=c;galleryTitle.textContent=c.name;show('galleryScreen');renderGallery()}
 async function getPhotos(cat){const snap=await getDocs(query(collection(cloud,'photos'),where('category','==',cat)));return snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.imageData).sort((a,b)=>(b.created||0)-(a.created||0))}
 async function renderGallery(){gallery.innerHTML='<div class="empty">טוען תמונות…</div>';try{const items=await getPhotos(current.id);gallery.innerHTML='';if(!items.length){gallery.innerHTML='<div class="empty"><div style="font-size:48px">📷</div><h3>עוד אין תמונות בקטגוריה</h3><p>לחצו למטה על „הוספת תמונות”</p></div>';return}items.forEach((p,i)=>{const box=document.createElement('div');box.className='photo';box.innerHTML=`<img src="${p.imageData}" alt="${p.title||''}"><span>${p.title||''}</span>${currentRole!=='viewer'?'<button class="photo-edit">✎</button>':''}`;box.querySelector('img').onclick=()=>openViewer(items,i);box.querySelector('span').onclick=()=>openViewer(items,i);box.querySelector('.photo-edit')?.addEventListener('click',()=>openEdit(p));gallery.appendChild(box)})}catch(e){gallery.innerHTML='<div class="empty">לא ניתן לטעון תמונות. נסה לרענן.</div>'}}
